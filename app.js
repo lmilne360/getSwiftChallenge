@@ -1,13 +1,16 @@
 $(document).ready(() => {
+  this.getWarehouseCords()
   this.getDrones()
+  this.getPackages()
 })
 
 const proxyurl = "https://cors-anywhere.herokuapp.com/"; // heroku cors
 const dronesEndpoint = "https://codetest.kube.getswift.co/drones" // Endpoint for random drones
 const packagesEndpoint = "https://codetest.kube.getswift.co/packages" // Endpoint forrandom packages
-const glocEndpoint = "https://maps.googleapis.com/maps/api/distancematrix/json?" //google maps distance matrix api
-const warehouseLocation = "303 Collins Street, Melbourne, VIC 3000"
-
+const gcords = "https://maps.googleapis.com/maps/api/geocode/json?" //google maps geocoding endpoint
+const warehouseAddress = "303 Collins Street, Melbourne, VIC 3000"
+var wareCords;
+//const wareHouselnglat; 
 var drones;
 var packages;
 var availableDrones;
@@ -15,18 +18,21 @@ var assignments = [];
 var unassigned = [];
 var results = {}
 
+
+function getWarehouseCords() {
+  $.get(proxyurl + gcords + `address=${warehouseAddress}`, (data) => {
+    wareCords = data.results[0].geometry.location
+  })
+}
+
 function getDrones() {
   $.get(proxyurl + dronesEndpoint, (drones) => {
-    //$('#drones').text(JSON.stringify(drones))
-
     drones.sort((a, b) => {
       return a.packages.length > b.packages.length ? 1 : (a.packages.length < b.packages.length ? -1 : 0);
     })
     this.drones = drones;
     this.getAvailableDrones(drones);
   })
-
-  this.getPackages()
 };
 
 // get all packages and sort by deadline
@@ -42,20 +48,16 @@ function getPackages() {
 
 
 function getAvailableDrones(dronesArr) {
-  this.availableDrones = drones.filter((drone) => {
+  this.availableDrones = dronesArr.filter((drone) => {
     return drone.packages.length === 0
   })
-  return sortByDistance(availableDrones);
+  this.sortByDistance(availableDrones);
 }
 
 function sortByDistance(dronesArr) {
-  var url = proxyurl + glocEndpoint;
 
-  // use google distance matrix to calculate distance
   dronesArr.forEach((drone) => {
-    $.get(url + `origins=${drone.location.latitude}, ${drone.location.longitude}` + `&destinations=${warehouseLocation}`, (data) => {
-      drone.distance = data.rows[0].elements[0].distance.value
-    })
+    drone.distance = calculateDistance(drone.location.latitude, drone.location.longitude)
   })
 
   //sort by distance
@@ -63,14 +65,15 @@ function sortByDistance(dronesArr) {
     return a.distance > b.distance ? 1 : (a.distance < b.distance ? -1 : 0);
   });
 
+  this.makeAssignment(dronesArr)
 }
 
-function makeAssignment() {
+function makeAssignment(dronesArr) {
 
-  if (availableDrones && availableDrones.length !== 0) {
-    availableDrones.forEach(function (drone, i) {
+  if (dronesArr && dronesArr.length !== 0) {
+    dronesArr.forEach(function (drone, i) {
 
-      if (drone.packages.length === 0) {
+      if (drone.packages.length === 0 && this.packages.length > 0) {
         drone.packages.push(this.packages.shift())
       }
 
@@ -91,6 +94,22 @@ function makeAssignment() {
   results.unassignedPackageIds = unassigned;
   //$('#results').text(JSON.stringify(results))
   document.body.innerHTML = JSON.stringify(results)
+}
+
+function calculateDistance(lat1, lon1, lat2 = wareCords.lat, lon2 = wareCords.lng) {
+  var radlat1 = Math.PI * lat1 / 180
+  var radlat2 = Math.PI * lat2 / 180
+  var theta = lon1 - lon2
+  var radtheta = Math.PI * theta / 180
+  var dist = Math.sin(radlat1) * Math.sin(radlat2) + Math.cos(radlat1) * Math.cos(radlat2) * Math.cos(radtheta);
+  dist = Math.acos(dist)
+  dist = dist * 180 / Math.PI
+  dist = dist * 60 * 1.1515
+
+  //convert to kilometers
+  dist = dist * 1.609344
+
+  return dist
 }
 
 // Assignment class
