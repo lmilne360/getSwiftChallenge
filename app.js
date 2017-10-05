@@ -1,7 +1,5 @@
 $(document).ready(() => {
   this.getDrones()
-  this.getPackages()
-
 })
 
 const proxyurl = "https://cors-anywhere.herokuapp.com/"; // heroku cors
@@ -11,11 +9,11 @@ const glocEndpoint = "https://maps.googleapis.com/maps/api/distancematrix/json?"
 const warehouseLocation = "303 Collins Street, Melbourne, VIC 3000"
 
 var drones;
-var availableDrones;
 var packages;
+var availableDrones;
 var assignments = [];
-
-
+var unassigned = [];
+var results = {}
 
 function getDrones() {
   $.get(proxyurl + dronesEndpoint, (drones) => {
@@ -27,9 +25,11 @@ function getDrones() {
     this.drones = drones;
     this.getAvailableDrones(drones);
   })
+
+  this.getPackages()
 };
 
-// Sort packages by deadline
+// get all packages and sort by deadline
 function getPackages() {
   $.get(proxyurl + packagesEndpoint, (data) => {
 
@@ -62,26 +62,40 @@ function sortByDistance(dronesArr) {
   dronesArr.sort((a, b) => {
     return a.distance > b.distance ? 1 : (a.distance < b.distance ? -1 : 0);
   });
-  console.log(dronesArr)
-  this.makeAssignment()
+
 }
 
 function makeAssignment() {
-  availableDrones.forEach(function (drone, i) {
 
-    if (drone.packages.length === 0) {
-      drone.packages.push(packages.shift())
-    }
+  if (availableDrones && availableDrones.length !== 0) {
+    availableDrones.forEach(function (drone, i) {
 
-    assignments.push(new Assignment(drone))
-  }, this);
+      if (drone.packages.length === 0) {
+        drone.packages.push(this.packages.shift())
+      }
 
-  debugger
+      assignments.push(new Assignment(drone))
+      //debugger
+    })
+  } else {
+    this.assignments = []
+  }
+
+  if (packages.length > 0) {
+    packages.forEach((package) => {
+      unassigned.push(package.packageId)
+    })
+  }
+
+  results.assignments = assignments;
+  results.unassignedPackageIds = unassigned;
+  //$('#results').text(JSON.stringify(results))
+  document.body.innerHTML = JSON.stringify(results)
 }
 
-// Assignment object
+// Assignment class
 function Assignment(drone) {
-  this.droneid = drone.droneId;
+  this.droneId = drone.droneId;
   this.packageId = drone.packages[0].packageId;
 }
 
