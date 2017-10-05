@@ -1,0 +1,17 @@
+{
+  "name": "getswift",
+  "version": "1.0.0",
+  "description": "my drone delivery challenge",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Laurennt Milne",
+  "license": "ISC",
+  "devDependencies": {
+    "eslint-config-google": "^0.9.1"
+  },
+  "dependencies": {
+    "eslint": "^4.8.0"
+  }
+}
