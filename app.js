@@ -5,101 +5,93 @@
 })
 */
 $(() => {
-  this.getWarehouseCords()
-  this.getDrones()
-  this.getPackages()
+
+  $( document ).ajaxStart(function() {
+    $('#loading').text("Loading data...")
+  });
+
+  $.when(getWarehouseCoords(), getDrones(), getPackages()).done((a, b, c) => {
+    const drones = b[0];
+    const availableDrones = getAvailableDrones(b[0]);
+    const packages = c[0];
+    
+    makeAssignment(availableDrones, packages);
+  })
 });
 
-
-const proxyurl = "https://cors-anywhere.herokuapp.com/"; // heroku cors
-const dronesEndpoint = "https://codetest.kube.getswift.co/drones" // Endpoint for random drones
-const packagesEndpoint = "https://codetest.kube.getswift.co/packages" // Endpoint forrandom packages
-const gcordsEndpoint = "https://maps.googleapis.com/maps/api/geocode/json?" //google maps geocoding endpoint
-const warehouseAddress = "303 Collins Street, Melbourne, VIC 3000"
+const proxyurl = "https://cors-anywhere.herokuapp.com/"; // heroku cors endpoint to avoid CORS error
+const dronesEndpoint = "https://codetest.kube.getswift.co/drones"; // Endpoint for random drones
+const packagesEndpoint = "https://codetest.kube.getswift.co/packages"; // Endpoint forrandom packages
+const gcordsEndpoint = "https://maps.googleapis.com/maps/api/geocode/json?"; //google maps geocoding endpoint
+const warehouseAddress = "303 Collins Street, Melbourne, VIC 3000";
 var wareCords;
-//const wareHouselnglat; 
-var drones = [];
-var packages = [];
-var availableDrones = [];
+
 var assignments = [];
 var unassigned = [];
-var results = {}
-var finishp = false;
-var finishd= false;
+var results = {};
 
 
-function getWarehouseCords() {
-  $.get(proxyurl + gcordsEndpoint + `address=${warehouseAddress}`, (data) => {
-    wareCords = data.results[0].geometry.location
-  })
+function getWarehouseCoords() {
+  return $.get(proxyurl + gcordsEndpoint + `address=${warehouseAddress}`, (data) => {
+      wareCords = data.results[0].geometry.location;
+    }).done(() => console.log('finished getting cords'))
+    .fail(() => console.log('Failed coords request'))
 }
 
 function getDrones() {
-  $.get(proxyurl + dronesEndpoint, (drones) => {
-    drones.sort((a, b) => {
-      return a.packages.length > b.packages.length ? 1 : (a.packages.length < b.packages.length ? -1 : 0);
-    })
-    this.drones = drones;
-    this.getAvailableDrones(drones);
-  })
+  return $.get(proxyurl + dronesEndpoint, (drones) => {
+      drones.sort((a, b) => {
+        return a.packages.length > b.packages.length ? 1 : (a.packages.length < b.packages.length ? -1 : 0);
+      })
+    }).done(() => console.log("Finish getting drones"))
+    .fail(() => console.log("Failed drone request"))
 };
 
 // get all packages and sort by deadline
 function getPackages() {
-  $.get(proxyurl + packagesEndpoint, (data) => {
-
-    data.sort((a, b) => {
-      return a.deadline > b.deadline ? 1 : (a.deadline < b.deadline ? -1 : 0);
-    });
-    this.packages = data;
-    this.finishp = true;
-    this.makeAssignment()
-  })
+  return $.get(proxyurl + packagesEndpoint, (data) => {
+      data.sort((a, b) => {
+        return a.deadline > b.deadline ? 1 : (a.deadline < b.deadline ? -1 : 0);
+      });
+    }).done(() => console.log("Finished getting packages"))
+    .fail(() => console.log("Failed package request"))
 };
 
 
 function getAvailableDrones(dronesArr) {
   this.availableDrones = dronesArr.filter((drone) => {
-    return drone.packages.length === 0
+    return drone.packages.length === 0;
   })
-  this.sortByDistance(availableDrones);
+ return this.sortByDistance(availableDrones);
 }
 
 function sortByDistance(dronesArr) {
 
+  //calculate distance from warehouse
   dronesArr.forEach((drone) => {
     drone.distance = calculateDistance(drone.location.latitude, drone.location.longitude)
-  })
+  });
 
   //sort by distance
-  dronesArr.sort((a, b) => {
+ return dronesArr.sort((a, b) => {
     return a.distance > b.distance ? 1 : (a.distance < b.distance ? -1 : 0);
   });
-  this.finishd = true;
-  this.makeAssignment()
-}
+};
 
-function makeAssignment(dronesArr = this.availableDrones) {
-   if (!(this.finishd && this.finishp)) {
-     console.log("not ready")
-    return
-   }else {
-     console.log('ready')
-     console.log('drones available: ',availableDrones.length, 'total packages: ', packages.length)
-   }
+function makeAssignment(dronesArr, packagesArr) {
   if (dronesArr && dronesArr.length !== 0) {
 
     dronesArr.forEach((drone) => {
 
-      if (drone.packages.length === 0 && this.packages.length > 0) {
-        drone.packages.push(this.packages.shift())
+      if (drone.packages.length === 0 && packagesArr.length > 0) {
+        drone.packages.push(packagesArr.shift())
         assignments.push(new Assignment(drone))
       }
 
     })
 
-    if (packages.length > 0) {
-      packages.forEach((package) => {
+    if (packagesArr.length > 0) {
+      packagesArr.forEach((package) => {
         unassigned.push(package.packageId)
       })
     }
@@ -107,9 +99,10 @@ function makeAssignment(dronesArr = this.availableDrones) {
 
   results.assignments = assignments;
   results.unassignedPackageIds = unassigned;
-  document.body.innerHTML = JSON.stringify(results)
+  document.body.innerHTML = JSON.stringify(results);
 }
 
+// Haversine distance formula
 function calculateDistance(lat1, lon1, lat2 = wareCords.lat, lon2 = wareCords.lng) {
   var radlat1 = Math.PI * lat1 / 180
   var radlat2 = Math.PI * lat2 / 180
@@ -120,10 +113,9 @@ function calculateDistance(lat1, lon1, lat2 = wareCords.lat, lon2 = wareCords.ln
   dist = dist * 180 / Math.PI
   dist = dist * 60 * 1.1515
 
-  //convert to kilometers
-  dist = dist * 1.609344
-
-  return dist
+  // convert to kilometers
+  dist = dist * 1.609344;
+  return dist;
 }
 
 // Assignment class
