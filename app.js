@@ -1,26 +1,35 @@
-$(document).ready(() => {
+/** $(document).ready(() => {
   this.getWarehouseCords()
   this.getDrones()
   this.getPackages()
 })
+*/
+$(() => {
+  this.getWarehouseCords()
+  this.getDrones()
+  this.getPackages()
+});
+
 
 const proxyurl = "https://cors-anywhere.herokuapp.com/"; // heroku cors
 const dronesEndpoint = "https://codetest.kube.getswift.co/drones" // Endpoint for random drones
 const packagesEndpoint = "https://codetest.kube.getswift.co/packages" // Endpoint forrandom packages
-const gcords = "https://maps.googleapis.com/maps/api/geocode/json?" //google maps geocoding endpoint
+const gcordsEndpoint = "https://maps.googleapis.com/maps/api/geocode/json?" //google maps geocoding endpoint
 const warehouseAddress = "303 Collins Street, Melbourne, VIC 3000"
 var wareCords;
 //const wareHouselnglat; 
-var drones;
-var packages;
-var availableDrones;
+var drones = [];
+var packages = [];
+var availableDrones = [];
 var assignments = [];
 var unassigned = [];
 var results = {}
+var finishp = false;
+var finishd= false;
 
 
 function getWarehouseCords() {
-  $.get(proxyurl + gcords + `address=${warehouseAddress}`, (data) => {
+  $.get(proxyurl + gcordsEndpoint + `address=${warehouseAddress}`, (data) => {
     wareCords = data.results[0].geometry.location
   })
 }
@@ -43,6 +52,8 @@ function getPackages() {
       return a.deadline > b.deadline ? 1 : (a.deadline < b.deadline ? -1 : 0);
     });
     this.packages = data;
+    this.finishp = true;
+    this.makeAssignment()
   })
 };
 
@@ -64,35 +75,38 @@ function sortByDistance(dronesArr) {
   dronesArr.sort((a, b) => {
     return a.distance > b.distance ? 1 : (a.distance < b.distance ? -1 : 0);
   });
-
-  this.makeAssignment(dronesArr)
+  this.finishd = true;
+  this.makeAssignment()
 }
 
-function makeAssignment(dronesArr) {
-
+function makeAssignment(dronesArr = this.availableDrones) {
+   if (!(this.finishd && this.finishp)) {
+     console.log("not ready")
+    return
+   }else {
+     console.log('ready')
+     console.log('drones available: ',availableDrones.length, 'total packages: ', packages.length)
+   }
   if (dronesArr && dronesArr.length !== 0) {
-    dronesArr.forEach(function (drone, i) {
+
+    dronesArr.forEach((drone) => {
 
       if (drone.packages.length === 0 && this.packages.length > 0) {
         drone.packages.push(this.packages.shift())
+        assignments.push(new Assignment(drone))
       }
 
-      assignments.push(new Assignment(drone))
-      //debugger
     })
-  } else {
-    this.assignments = []
-  }
 
-  if (packages.length > 0) {
-    packages.forEach((package) => {
-      unassigned.push(package.packageId)
-    })
+    if (packages.length > 0) {
+      packages.forEach((package) => {
+        unassigned.push(package.packageId)
+      })
+    }
   }
 
   results.assignments = assignments;
   results.unassignedPackageIds = unassigned;
-  //$('#results').text(JSON.stringify(results))
   document.body.innerHTML = JSON.stringify(results)
 }
 
