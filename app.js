@@ -1,15 +1,5 @@
-/** $(document).ready(() => {
-  this.getWarehouseCords()
-  this.getDrones()
-  this.getPackages()
-})
-*/
+
 $(() => {
-
-  $( document ).ajaxStart(function() {
-    $('#loading').text("Loading data...")
-  });
-
   $.when(getWarehouseCoords(), getDrones(), getPackages()).done((a, b, c) => {
     const drones = b[0];
     const availableDrones = getAvailableDrones(b[0]);
@@ -21,7 +11,7 @@ $(() => {
 
 const proxyurl = "https://cors-anywhere.herokuapp.com/"; // heroku cors endpoint to avoid CORS error
 const dronesEndpoint = "https://codetest.kube.getswift.co/drones"; // Endpoint for random drones
-const packagesEndpoint = "https://codetest.kube.getswift.co/packages"; // Endpoint forrandom packages
+const packagesEndpoint = "https://codetest.kube.getswift.co/packages"; // Endpoint for random packages
 const gcordsEndpoint = "https://maps.googleapis.com/maps/api/geocode/json?"; //google maps geocoding endpoint
 const warehouseAddress = "303 Collins Street, Melbourne, VIC 3000";
 var wareCords;
@@ -67,12 +57,12 @@ function getAvailableDrones(dronesArr) {
 
 function sortByDistance(dronesArr) {
 
-  //calculate distance from warehouse
+  // Calculate distance from warehouse
   dronesArr.forEach((drone) => {
     drone.distance = calculateDistance(drone.location.latitude, drone.location.longitude)
   });
 
-  //sort by distance
+  // sort by distance
  return dronesArr.sort((a, b) => {
     return a.distance > b.distance ? 1 : (a.distance < b.distance ? -1 : 0);
   });
@@ -124,8 +114,7 @@ function Assignment(drone) {
   this.packageId = drone.packages[0].packageId;
 }
 
-//Sort packages by due date, closest due date first
-//Sort 
+
 
 /**
  * Sort the packages by due dates, closest due dates most important
